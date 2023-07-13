@@ -8,7 +8,7 @@
 
 class meadowlark {
 public:
-   bool start_meadowlark();
+   //bool start_meadowlark();
    void disable_meadowlark();
    int slm_thread(void* data);
 
