@@ -49,9 +49,17 @@
 #define TOGGLE_BLANKING 0x4000000
 #define TOGGLE_DIG_MOD 0x8000000
 
-#define FREE_RUN (0u)
-#define Z_MODE (1u)
-#define TIMED_MODE (2u)
+#define FREE_RUN (0x0)
+#define Z_MODE (0x1)
+#define TIMED_MODE (0x2)
+#define ARB_EXP (0x4)
+
+#define STOP_BLANKING (0x0)
+#define START_BLANKING (0x1)
+
+#define BLUE_LASER (0u)
+#define GREEN_LASER (1u)
+#define BOTH_LASERS (2u)
 
 
 
@@ -64,9 +72,9 @@ enum stage_type {
 
 using label_ptr = decltype(el::share(el::label("-")));
 using simp_button_ptr = std::shared_ptr<el::layered_button>;
-using fps_box_ptr = decltype(el::input_box("5.0"));
-using exp_box_ptr = decltype(el::input_box("0.0"));
-
+using input_box_ptr = decltype(el::input_box(""));
+//using exp_box_ptr = decltype(el::input_box("0.0"));
+//using chk_box_ptr = decltype(el::check_box("Hello"));
 
 
 struct SLM_THREAD_DATA
@@ -99,10 +107,12 @@ struct USB_THREAD_DATA
 	std::condition_variable signal_PI;
 	simp_button_ptr start_stop_butt_ptr;
 	bool trigger_running = false;
-	fps_box_ptr fps;
-	exp_box_ptr exp;
+	input_box_ptr fps;
+	input_box_ptr exp;
 	float fpsVal = 5.0;
 	float expVal = 0.0;
+	bool arbitrary_exp = false;
+	//chk_box_ptr* exp_mode_ptr;
 	//std::shared_ptr<el::layered_button> _slm_button
 };
 

@@ -441,12 +441,58 @@ auto SIM_UI::make_basic_interface()
    auto  laser_button1 = radio_button("Blue 488nm");
    auto  laser_button2 = radio_button("Green 561nm");
    auto  laser_button3 = radio_button("Both Alternated");
+
+   laser_button1.on_click =
+       [this](bool click_state)
+   {
+       if (click_state) {
+           std::cout << "BLUE" << std::endl;
+
+           this->USB_DATA.outgoing.mode = 0;
+           this->USB_DATA.outgoing.mode |= BLUE_LASER;
+           this->USB_DATA.outgoing.flags |= SET_LASER_MODE;
+       }
+   };
+
+   laser_button2.on_click =
+       [this](bool click_state)
+   {
+       if (click_state) {
+           std::cout << "GREEN" << std::endl;
+
+           this->USB_DATA.outgoing.mode = 0;
+           this->USB_DATA.outgoing.mode |= GREEN_LASER;
+           this->USB_DATA.outgoing.flags |= SET_LASER_MODE;
+       }
+   };
+
+   laser_button3.on_click =
+       [this](bool click_state)
+   {
+       if (click_state) {
+           std::cout << "BOTH" << std::endl;
+
+           this->USB_DATA.outgoing.mode = 0;
+           this->USB_DATA.outgoing.mode |= BOTH_LASERS;
+           this->USB_DATA.outgoing.flags |= SET_LASER_MODE;
+       }
+   };
+
+
    _toggle_blanking = share(toggle_button("Blanking", 1.0, bred));
 
    _toggle_blanking->on_click =
-      [&](bool) mutable
+      [&](bool toggle_state) mutable
    {
-      //signal_toggle.notify_one();
+       if (toggle_state) {
+           USB_DATA.outgoing.flags |= TOGGLE_BLANKING;
+           USB_DATA.outgoing.mode |= START_BLANKING;
+           std::cout << "Blanking On" << std::endl;
+       }
+       else {
+           USB_DATA.outgoing.flags |= TOGGLE_BLANKING;
+           USB_DATA.outgoing.mode |= STOP_BLANKING;
+       }
    };
 
    laser_button1.select(true);
@@ -715,11 +761,17 @@ auto SIM_UI::make_basic_interface()
 
    auto my_input = [=](auto caption, auto input)
    {
-      return right_margin(10, hgrid(grid, my_label(caption), input));
+       return right_margin(10, hgrid(grid, my_label(caption), input));// , label("sec").text_align(canvas::center)));
+   };
+
+   auto exp_input = [=](auto caption, auto input, auto input2)
+   {
+       return right_margin(10, hgrid(grid, my_label(caption), hsize(200,input), input2));
    };
 
    // This is an example on how to add an on_text callback:
    USB_DATA.fps = input_box("5.0");
+   //USB_DATA.fps = input_box("5.0");
    USB_DATA.fps.second->on_enter =
       [this, input = USB_DATA.fps.second.get()](std::string_view text)
    {
@@ -735,8 +787,8 @@ auto SIM_UI::make_basic_interface()
           input->set_text(std::to_string(this->USB_DATA.fpsVal));
       }
    };
-
    USB_DATA.exp = input_box("0");
+   //USB_DATA.exp = input_box("0");
    USB_DATA.exp.second->on_enter =
       [this, input = USB_DATA.exp.second.get()](std::string_view text)
    {
@@ -746,6 +798,12 @@ auto SIM_UI::make_basic_interface()
          this->USB_DATA.expVal = this->USB_DATA.outgoing.exposure = std::stod(test_txt);
          this->USB_DATA.outgoing.flags |= SET_EXPOSURE;
          input->set_text(text);
+         if (this->USB_DATA.arbitrary_exp) {
+             this->USB_DATA.outgoing.mode |= ARB_EXP;
+         }
+         else {
+             this->USB_DATA.outgoing.mode &= ~ARB_EXP;
+         }
          //input->select_all();
        }
        else {
@@ -753,12 +811,22 @@ auto SIM_UI::make_basic_interface()
        }
    };
 
+   // Arbitrary Exposure
+   auto exp_mode_ptr = check_box("Arbitrary Exposure");
+   exp_mode_ptr.value(false);
+   exp_mode_ptr.on_click = 
+       [this](bool click_state)
+   {
+       this->USB_DATA.arbitrary_exp = click_state;
+   };
+
+
    auto text_input =
-      pane("Text Input",
+      pane("Exposure Control",
          margin({ 10, 5, 10, 5 },
             vtile(
-               my_input("FPS:", USB_DATA.fps.first),
-               my_input("Exposure:", USB_DATA.exp.first)
+               my_input("FPS (1/sec):", USB_DATA.fps.first),
+               top_margin(10, htile(my_input("Exposure (sec):", USB_DATA.exp.first), exp_mode_ptr))
             )
          ))
       ;

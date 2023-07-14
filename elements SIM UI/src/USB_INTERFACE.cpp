@@ -49,7 +49,7 @@ void USB_INTERFACE::startUSB()
         while (this->thd_dat->usb_running) {
 
             //std::unique_lock<std::mutex> flg(this->thd_dat->usb_crit);
-            if (this->thd_dat->outgoing.flags & (START_CAPTURE|STAGE_MOVE_COMPLETE|SET_RUN_MODE|CHANGE_Z_STEPS|STOP_CAPTURE|CHANGE_FPS|SET_EXPOSURE)) {
+            if (this->thd_dat->outgoing.flags & (START_CAPTURE|STAGE_MOVE_COMPLETE|SET_RUN_MODE|CHANGE_Z_STEPS|STOP_CAPTURE|CHANGE_FPS|SET_EXPOSURE|TOGGLE_BLANKING|SET_LASER_MODE)) {
                 int actualSize;
                 std::cout << "before bulk transfer" << std::endl;
                 int ret = libusb_bulk_transfer(dev, EP_OUT, (unsigned char*)&thd_dat->outgoing, sizeof(usb_data), &actualSize, 0);
@@ -64,7 +64,7 @@ void USB_INTERFACE::startUSB()
                     std::cout << "success: bulk write " << actualSize << " bytes" << std::endl;
 
              
-                    thd_dat->outgoing.flags &= ~(START_CAPTURE | STAGE_MOVE_COMPLETE | SET_RUN_MODE | CHANGE_Z_STEPS | STOP_CAPTURE | CHANGE_FPS|SET_EXPOSURE); //~(CHANGE_FPS);
+                    thd_dat->outgoing.flags &= ~(START_CAPTURE | STAGE_MOVE_COMPLETE | SET_RUN_MODE | CHANGE_Z_STEPS | STOP_CAPTURE | CHANGE_FPS|SET_EXPOSURE|TOGGLE_BLANKING|SET_LASER_MODE); //~(CHANGE_FPS);
                     //thd_data->incoming->flags &= ~CHANGE_CONFIG;
                    
                 }
@@ -101,8 +101,9 @@ void USB_INTERFACE::startUSB()
                 this->thd_dat->incoming.flags &= ~SET_EXPOSURE;
             }
             if (this->thd_dat->incoming.flags & CHANGE_FPS) {
+                std::cout << "set fps: " << this->thd_dat->incoming.fps << std::endl;
                 this->thd_dat->fpsVal = this->thd_dat->incoming.fps;
-                this->thd_dat->fps.second.get()->set_text(std::to_string(this->thd_dat->fpsVal));
+                this->thd_dat->fps.second.get()->set_text(std::to_string(this->thd_dat->incoming.fps));
                 this->thd_dat->incoming.flags &= ~CHANGE_FPS;
             }
             //flg.unlock();
