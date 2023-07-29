@@ -31,6 +31,7 @@ public:
    //using label_ptr = decltype(el::share(el::label("SIM_UI Aligator")));
    
    void refresh_view();
+
    SIM_UI(int argc, char* argv[]);
    ~SIM_UI();
 
@@ -43,6 +44,10 @@ public:
    bool PI_trigger_mode1 = true;
    bool PI_trigger_mode2 = false;
    bool PI_center_range = true;
+   bool blanked = false;
+   bool free_run_state = false;
+   bool seven_phase_mode = false;
+   std::condition_variable signal_slm;
    //std::mutex sleep_PI;
    //std::condition_variable signal_PI;
 
@@ -54,8 +59,10 @@ private:
    void start_slm();
    void start_USB();
    void start_PI_stage();
+   void start_THOR_stage();
    void stop_slm();
    void stop_PI_stage();
+   void start_count_lapse();
 
    toggle_ptr _toggle_blanking;
    
@@ -65,13 +72,15 @@ private:
    //simp_button_ptr _start_latch_ptr;
    bool threads_alive = true;
    //std::unique_ptr<std::thread> toggle_thread;
-   std::condition_variable signal_slm;
+   
    std::mutex sleep_slm;
 
    SLM_Interface SLM;
    Stage PIStage;
+   Stage THORStage;
    
    bool _PI_STATUS = false;
+   bool _THOR_STATUS = false;
    bool _SLM_STATUS = false;
    bool _trigger_running = false;
    el::window _win;
@@ -79,6 +88,7 @@ private:
    std::string small_step_str = "0.1";
    std::string large_step_str = "1.0";
    std::string jump_to_str = "";
+   std::thread* count_lapse_thd = nullptr;
 };
 
 #endif SIM_UI_HPP

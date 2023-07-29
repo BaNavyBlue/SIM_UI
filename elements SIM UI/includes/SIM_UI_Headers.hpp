@@ -21,6 +21,10 @@
 #include <windows.h>
 #include <chrono>
 #include <sys/types.h>
+#include <stdlib.h>
+#include <conio.h>
+//#include <MMcore.h>
+//#include <Configuration.h>
 //#include <SIM_UI.hpp>
 //#include <SLM.hpp>
 
@@ -49,9 +53,15 @@
 #define TOGGLE_BLANKING 0x4000000
 #define TOGGLE_DIG_MOD 0x8000000
 
+#define THREE_BEAM (0x0)
+#define TWO_BEAM (0x1)
+#define NO_SIM_Z_ONLY (0x2)
+#define SINGLE_ANGLE (0x4)
+#define SEVEN_PHASE (0x8)
+
 #define FREE_RUN (0x0)
 #define Z_MODE (0x1)
-#define TIMED_MODE (0x2)
+#define COUNT_MODE (0x2)
 #define ARB_EXP (0x4)
 
 #define STOP_BLANKING (0x0)
@@ -95,7 +105,7 @@ struct usb_data {
 	uint16_t steps;
 	uint8_t mode;
 	uint8_t bonus;
-	uint64_t count;
+	uint32_t count;
 };
 
 struct USB_THREAD_DATA
@@ -105,13 +115,28 @@ struct USB_THREAD_DATA
 	bool usb_running = false;
 	std::mutex usb_crit;
 	std::condition_variable signal_PI;
+	std::condition_variable signal_THOR;
 	simp_button_ptr start_stop_butt_ptr;
 	bool trigger_running = false;
 	input_box_ptr fps;
 	input_box_ptr exp;
+	input_box_ptr lapse_period;
 	float fpsVal = 5.0;
 	float expVal = 0.0;
+	float lapseVal = 20.0;
+	int SIM_phases = 5;
+	int SIM_angles = 3;
+	int min_frames = 15;
 	bool arbitrary_exp = false;
+	bool count_run_state = true;
+	bool triggerStage = false;
+	bool run_time_lapse = false;
+	uint32_t count = 1;
+	int total_image_count = 15;
+	int positions = 2; // FOR PI STAGE
+	float lapse_time = 5.0; //In minutes
+	int lapse_counts = 1;
+	label_ptr _config_label;
 	//chk_box_ptr* exp_mode_ptr;
 	//std::shared_ptr<el::layered_button> _slm_button
 };
@@ -126,12 +151,10 @@ struct STAGE_THREAD_DATA
 	std::shared_ptr<el::layered_button> _leftL_button;
 	std::shared_ptr<el::layered_button> _RightS_button;
 	std::shared_ptr<el::layered_button> _RightL_button;
-	double startDisplace = -0.5;
-	double endDisplace = 0.5;
+	double startDisplace = -0.036;
+	double endDisplace = 0.036;
 	double stepSize = 0.072;
 	double returnPos;
-	bool triggerStage = false;
-	int positions = 2;
 	std::condition_variable* signal_stage;
 	std::mutex sleep_thread;
 	USB_THREAD_DATA* usb_dat;

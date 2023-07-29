@@ -2,6 +2,7 @@
 #define STAGE_CONTROL_H
 #include "SIM_UI_Headers.hpp"
 #include "PI_Stage.h"
+#include <THOR_STAGE.h>
 
 
 class Stage{
@@ -11,6 +12,7 @@ public:
 	void join_stage_thread();
 	STAGE_THREAD_DATA* data;
 	PI_STAGE PIStage;
+	THOR_STAGE THORStage;
 	bool thread_started = false;
 
 private:

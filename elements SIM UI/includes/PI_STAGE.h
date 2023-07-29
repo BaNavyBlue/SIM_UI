@@ -28,6 +28,7 @@ public:
 	void moveRel(double displace);
 	void moveAbs(double newPos);
 	void runSequence();
+	void runLapseSequence();
 	double smallStep = 0.1;
 	double largeStep = 1.0;
 	STAGE_THREAD_DATA* data;
@@ -38,6 +39,7 @@ public:
 	const int piChannelsArray[2] = { 1,2 };
 	BOOL pbValueArray[2] = { false, false };
 	int iArraySize = 2;
+	std::condition_variable* signal_slm;
 private:
 	
 	std::thread* trigger_thread_ptr = nullptr;

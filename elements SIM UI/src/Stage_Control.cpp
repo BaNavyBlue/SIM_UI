@@ -17,6 +17,17 @@ bool Stage::start_stage(stage_type stage_t) {
 		stage_thread_ptr = new std::thread(make_PI_thread);
 		return true;
 	}
+	else if (stage_t == THOR) {
+		auto make_THOR_thread = [&] {
+			thread_started = true;
+			if (THORStage.THOR_STAGE_THD(data)) {
+				thread_started = false;
+				std::cout << "THOR thread failed" << std::endl;
+			}
+		};
+		stage_thread_ptr = new std::thread(make_THOR_thread);
+		return true;
+	}
 	else {
 		return false;
 	}

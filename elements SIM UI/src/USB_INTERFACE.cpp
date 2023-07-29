@@ -45,11 +45,17 @@ void USB_INTERFACE::startUSB()
 
         thd_dat->outgoing.flags = 0;
         thd_dat->incoming.flags = 0;
+        thd_dat->outgoing.mode = 0;
+        thd_dat->outgoing.count = 1;
+        thd_dat->outgoing.mode |= THREE_BEAM;
+        thd_dat->outgoing.mode |= COUNT_MODE;
+        this->thd_dat->outgoing.flags |= STOP_CAPTURE | CHANGE_FPS | SET_RUN_MODE | SET_SIM_MODE;
+        this->thd_dat->outgoing.fps = 5.0;
         /*****************************************************************************************/
         while (this->thd_dat->usb_running) {
 
             //std::unique_lock<std::mutex> flg(this->thd_dat->usb_crit);
-            if (this->thd_dat->outgoing.flags & (START_CAPTURE|STAGE_MOVE_COMPLETE|SET_RUN_MODE|CHANGE_Z_STEPS|STOP_CAPTURE|CHANGE_FPS|SET_EXPOSURE|TOGGLE_BLANKING|SET_LASER_MODE)) {
+            if (this->thd_dat->outgoing.flags & (START_CAPTURE|STAGE_MOVE_COMPLETE|SET_RUN_MODE|CHANGE_Z_STEPS|STOP_CAPTURE|CHANGE_FPS|SET_EXPOSURE|TOGGLE_BLANKING|SET_LASER_MODE|SET_SIM_MODE)) {
                 int actualSize;
                 std::cout << "before bulk transfer" << std::endl;
                 int ret = libusb_bulk_transfer(dev, EP_OUT, (unsigned char*)&thd_dat->outgoing, sizeof(usb_data), &actualSize, 0);
@@ -64,7 +70,7 @@ void USB_INTERFACE::startUSB()
                     std::cout << "success: bulk write " << actualSize << " bytes" << std::endl;
 
              
-                    thd_dat->outgoing.flags &= ~(START_CAPTURE | STAGE_MOVE_COMPLETE | SET_RUN_MODE | CHANGE_Z_STEPS | STOP_CAPTURE | CHANGE_FPS|SET_EXPOSURE|TOGGLE_BLANKING|SET_LASER_MODE); //~(CHANGE_FPS);
+                    thd_dat->outgoing.flags &= ~(START_CAPTURE | STAGE_MOVE_COMPLETE | SET_RUN_MODE | CHANGE_Z_STEPS | STOP_CAPTURE | CHANGE_FPS|SET_EXPOSURE|TOGGLE_BLANKING|SET_LASER_MODE | SET_SIM_MODE); //~(CHANGE_FPS);
                     //thd_data->incoming->flags &= ~CHANGE_CONFIG;
                    
                 }
@@ -83,18 +89,28 @@ void USB_INTERFACE::startUSB()
                 //asio::placeholders::error();
                 std::cout << "usb return failure" << std::endl;
             }
-            //if(this->thd_dat->incoming.flags & SEND_TRIGG){
-            //    this->thd_dat->signal_PI.notify_one();
-            //    std::cout << "Trigger command recieved" << std::endl;
-            //    this->thd_dat->incoming.flags &= ~SEND_TRIGG;
-            //}
+            if(this->thd_dat->incoming.flags & SEND_TRIGG){
+                this->thd_dat->signal_THOR.notify_one();
+                std::cout << "Trigger command recieved" << std::endl;
+                this->thd_dat->incoming.flags &= ~SEND_TRIGG;
+            }
             if (this->thd_dat->incoming.flags & STOP_Z_STACK) {
                 std::cout << "Stop Z Stack received" << std::endl;
                 this->thd_dat->incoming.flags &= ~STOP_Z_STACK;
                 this->thd_dat->outgoing.flags |= STOP_CAPTURE;
                 this->thd_dat->trigger_running = false;
-                this->thd_dat->start_stop_butt_ptr->reset();
+                //this->thd_dat->start_stop_butt_ptr->reset();
             }
+
+            if (this->thd_dat->incoming.flags & STOP_COUNT) {
+                std::cout << "Stop Count received" << std::endl;
+                this->thd_dat->incoming.flags &= ~STOP_COUNT;
+                this->thd_dat->outgoing.flags |= STOP_CAPTURE;
+                this->thd_dat->trigger_running = false;
+                //this->thd_dat->start_stop_butt_ptr->reset();
+            }
+
+
             if (this->thd_dat->incoming.flags & SET_EXPOSURE) {
                 this->thd_dat->expVal = this->thd_dat->incoming.exposure;
                 this->thd_dat->exp.second.get()->set_text(std::to_string(this->thd_dat->expVal));
@@ -163,5 +179,43 @@ void USB_INTERFACE::sendData()
         //thd_data->incoming->flags &= ~CHANGE_CONFIG;
         flg.unlock();
     }
+}
+
+int USB_INTERFACE::calc_num_images()
+{
+    int image_count = 1;
+    if (thd_dat->count_run_state) {
+        image_count = (thd_dat->SIM_angles * thd_dat->SIM_phases * thd_dat->count)*thd_dat->lapse_counts;
+        return image_count;
+    }
+    else if (thd_dat->triggerStage) {
+        image_count = (thd_dat->SIM_angles * thd_dat->SIM_phases * thd_dat->positions)*thd_dat->lapse_counts;
+        return image_count;
+    }
+    return image_count;
+}
+
+void USB_INTERFACE::change_lapse_count() {
+    if (thd_dat->run_time_lapse) {
+        thd_dat->lapse_counts = std::ceil(thd_dat->lapse_time * 60 / thd_dat->lapseVal);
+    }
+    else {
+        thd_dat->lapse_counts = 1;
+    }
+    thd_dat->_config_label.get()->set_text(conf_string());
+}
+
+std::string USB_INTERFACE::conf_string()
+{
+    std::string state = "Mode: Free Run, ";
+    std::string frames = "Total Frames: " + std::to_string(calc_num_images()) + ", ";
+    std::string lapse_captures = "Lapse counts: " + std::to_string(thd_dat->lapse_counts);
+    if (thd_dat->count_run_state) {
+        state = "Mode: Frame Count, ";
+    }
+    else if (thd_dat->triggerStage) {
+        state = "Mode: Z-Step, ";
+    }
+    return state + frames + lapse_captures;
 }
 

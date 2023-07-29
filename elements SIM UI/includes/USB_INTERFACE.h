@@ -61,6 +61,9 @@ public:
 	void startUSB();
 	void stopUSB();
 	void sendData();
+	int calc_num_images();
+	void change_lapse_count();
+	std::string conf_string();
 	USB_THREAD_DATA* thd_dat;
 	//libusb_device_handle* open_dev(void);
 	libusb_device_handle* dev;

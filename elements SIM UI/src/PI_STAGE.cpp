@@ -149,14 +149,16 @@ void PI_STAGE::OpenConnection(ConnectionType type, std::string hostName)
         char connectedUsbController[1024];
         int noDevices = PI_EnumerateUSB(connectedUsbController, 1024, "");
         std::cout << "Found " << noDevices << " controllers connected via USB, connecting to the first one:" << std::endl << connectedUsbController << std::endl;
-        char* pos = strchr(connectedUsbController, '\n');
+        std::string PI_stage = "E-754.1CD Physik Instrumente (PI) SN 118050564";
+ 
+        //char* pos = strchr(connectedUsbController, '\n');
 
-        if (pos)
-        {
-            *pos = '\0';
-        }
+        //if (pos)
+        //{
+        //    *pos = '\0';
+        //}
 
-        iD = PI_ConnectUSB(connectedUsbController);
+        iD = PI_ConnectUSB(PI_stage.c_str());
         connType = "USB";
         break;
     }
@@ -302,17 +304,26 @@ void PI_STAGE::runSequence()
         std::cout << "Pos: " << 0 << " ";
         this->moveRel(this->data->startDisplace);
         std::cout << "Stage Moved To Start Position" << std::endl;
-        int i = 1;
+
+        uint32_t wait_final_frame = std::ceil(1 / this->data->usb_dat->fpsVal * this->data->usb_dat->min_frames*1000);
+        std::cout << "Wait Final Frame: " << (int)wait_final_frame << "ms" << std::endl;
+        signal_slm->notify_one(); // Make SURE SLM is waiting for trigger
+        this->data->usb_dat->outgoing.flags |= START_CAPTURE;
+
+
+        int i = 0;
         while(this->trigger_thd_run){
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-            std::cout << "Pos: " << i << " ";
+            std::cout << "Pos: " << i + 1 << " ";
             WaitForTrigger(this->iD,this->piChannelsArray,this->pbValueArray,this->iArraySize, &this->trigger_thd_run);
             this->moveRel(this->data->stepSize);
 
             ++i;
-            if (i == this->data->positions) { // Steps are positions - 1 starting at 0;
+            if (i >= this->data->usb_dat->positions - 1) { // Steps are positions - 1 starting at 0;
                 this->trigger_thd_run = false;
-                Sleep(1000); // Sleep so that the stage doesn't move while capturing the last position.
+                std::cout << "The big sleep!!!!" << std::endl;
+                Sleep(wait_final_frame); // Sleep so that the stage doesn't move while capturing the last position.
+
             }
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             std::cout << "Total time = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[us]" << std::endl;
@@ -325,6 +336,77 @@ void PI_STAGE::runSequence()
         trigger_thd_run = true;
         trigger_thread_ptr = new std::thread(seq_thread);
         std::cout << "trigger thread started" << std::endl;
+    //}
+    //else {
+    //    std::cout << "error running trigger thread" << std::endl;
+    //}
+}
+
+void PI_STAGE::runLapseSequence()
+{
+    if (trigger_thread_ptr != nullptr && trigger_thread_ptr->joinable() && !trigger_thd_run) {
+        trigger_thread_ptr->join();
+        /*std::cout << "before delete" << std::endl;
+        delete[]trigger_thread_ptr;
+        std::cout << "aftter delete" << std::endl;
+        trigger_thread_ptr = nullptr;*/
+    }
+    auto seq_thread = [this]()
+    {
+        this->data->returnPos = this->position;
+        std::cout << "Pos: " << 0 << " ";
+        this->moveRel(this->data->startDisplace);
+        std::cout << "Stage Moved To Start Position" << std::endl;
+
+        //Sleep(100);
+        double startPosition = this->data->returnPos + this->data->startDisplace;
+        uint32_t sleep_time = std::ceil((this->data->usb_dat->lapseVal - (1 / this->data->usb_dat->fpsVal * this->data->usb_dat->min_frames + 0.025) * (this->data->usb_dat->positions - 1))*1000);
+        uint32_t wait_final_frame = std::ceil(1 / this->data->usb_dat->fpsVal * this->data->usb_dat->min_frames*1000);
+        std::cout << "sleep_time: " << (int)sleep_time << "ms" << std::endl;
+        std::cout << "Wait Final Frame: " << (int)wait_final_frame << "ms" << std::endl;
+        int count = 0;
+        std::cout << "starting count: " << count << std::endl;
+        signal_slm->notify_one(); // Make SURE SLM is waiting for trigger
+        this->data->usb_dat->outgoing.flags |= START_CAPTURE;
+
+        while (count < this->data->usb_dat->lapse_counts) {
+            int i = 0;
+            std::cout << "lapse: " << count << std::endl;
+            this->trigger_thd_run = true;
+
+            while (this->trigger_thd_run) {
+                //std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                std::cout << "Pos: " << i + 1 << " ";
+                WaitForTrigger(this->iD, this->piChannelsArray, this->pbValueArray, this->iArraySize, &this->trigger_thd_run);
+                this->moveRel(this->data->stepSize);
+
+                //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                //std::cout << "Total time = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[us]" << std::endl;
+
+                ++i;
+                if (i == this->data->usb_dat->positions - 1) { // Steps are positions - 1 starting at 0;
+                    this->trigger_thd_run = false;
+                    Sleep(wait_final_frame); // Sleep so that the stage doesn't move while capturing the last position.
+                    this->moveAbs(startPosition);
+                    std::cout << "Stage Moved To Start Position, Waiting for next lapse." << std::endl;
+                    Sleep(sleep_time - 10);
+                    count++;
+                    std::cout << "starting count: " << count << std::endl;
+                    signal_slm->notify_one(); // Make SURE SLM is waiting for trigger
+                    this->data->usb_dat->outgoing.flags |= START_CAPTURE;
+                }
+            }
+        } 
+        this->data->usb_dat->start_stop_butt_ptr->reset();
+        this->moveAbs(this->data->returnPos);
+        this->data->usb_dat->trigger_running;
+        //trigger_thd_run = false;
+        std::cout << "Trig finished" << std::endl;
+    };
+    //if (trigger_thread_ptr = nullptr) {
+    trigger_thd_run = true;
+    trigger_thread_ptr = new std::thread(seq_thread);
+    std::cout << "lapse trigger thread started" << std::endl;
     //}
     //else {
     //    std::cout << "error running trigger thread" << std::endl;
