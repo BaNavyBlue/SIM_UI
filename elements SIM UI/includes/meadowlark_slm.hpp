@@ -13,15 +13,26 @@ public:
    int slm_thread(void* data);
 
    SLM_THREAD_DATA* data;
-   bool keep_alive = true;
+   bool keep_alive = false;
    bool is_running = false;
+   char lutPath[256];
+   char stripePath3BEAM[256];
+   char stripePath7Phase[256];
+   char stripePath3BEAMGREEN[256];
+   char stripePath7PhaseGREEN[256];
+   char stripePath3BEAMTWO[256];
+   char stripePath7PhaseTWO[256];
+   std::string stPath;
+   int load_images();
+   bool reloadImageBuffer();
+
 
 private:
    void get_paths();
    void load_lut();
-   int load_images();
-   
+
    int board_number;
+   
    // Construct a Blink_SDK instance
    unsigned int bits_per_pixel = 12U;   //12U is used for 1920x1152 SLM, 8U used for the small 512x512
    bool         is_nematic_type = true;
@@ -44,15 +55,15 @@ private:
    int ImgSize;
    unsigned int buffer_size;
 
-   char lutPath[256];
-   char stripePath[256];
-   std::string stPath;
+
 
    uint8_t* im_buffer; //dynamic image buffer
    uint8_t* im_ptr; //buffer image pointer
 
    //bool is_running; // For SLM thread
    uint32_t offset; // For image buffer stride
+
+   std::mutex crit_buffer;
 };
 
 #endif

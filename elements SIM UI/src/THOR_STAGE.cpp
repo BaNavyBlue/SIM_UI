@@ -74,6 +74,11 @@ int THOR_STAGE::THOR_STAGE_THD(void* data_ptr)
             CC_Home(testSerialNo);
             std::cout << "Device " << testSerialNo << " homing" << std::endl;
             waitForHome();
+
+            /* For moving lense instead of SLM to start position */
+            std::cout << "Moving to start pos 25mm" << std::endl;
+            moveAbs(25.0);
+
             // wait for completion
             //WORD messageType;
             //WORD messageId;
@@ -292,19 +297,23 @@ void THOR_STAGE::runSevenPhaseSeq()
         //signal_slm->notify_one(); // Make SURE SLM is waiting for trigger
         //this->data->usb_dat->outgoing.flags |= START_CAPTURE;
 
-
+        double new_position = maxPos_mm;
         int i = 0;
         while (i < 6) {
-            double new_position = blue_axial_shift * (i + 1);
+            //double new_position = -blue_axial_shift * (i + 1);
+            //new_position -= blue_axial_shift;
             std::unique_lock slp(this->data->sleep_thread);
             this->data->signal_stage->wait(slp);
-            this->moveAbs(new_position);
+            //this->moveAbs(new_position);
+            this->moveRel(-blue_axial_shift);
             this->data->usb_dat->outgoing.flags |= STAGE_MOVE_COMPLETE;
             std::cout << "moved pos:" << i + 1 << std::endl;
             ++i;
         }
-        CC_Home(this->testSerialNo);
-        this->waitForHome();
+        Sleep(3000);
+        this->moveAbs(maxPos_mm);
+        //CC_Home(this->testSerialNo);
+        //this->waitForHome();
         axial_stage_seq_run = false;
         std::cout << "Axial Phase Shift finished, returned home" << std::endl;
     };

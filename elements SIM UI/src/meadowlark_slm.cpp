@@ -54,13 +54,29 @@ void meadowlark::get_paths() {
    ifs.open("blink_paths.txt");
    //char lutPath[256];
    //char stripePath[256];
+ /*  char stripePath3BEAM[256];
+   char stripePath7Phase[256];
+   char stripePath3BEAMGREEN[256];
+   char stripePath7PhaseGREEN[256];
+   char stripePath3BEAMTWO[256];
+   char stripePath7PhaseTWO[256];*/
    ifs.getline(lutPath, 256);
-   ifs.getline(stripePath, 256);
+   ifs.getline(stripePath3BEAM, 256);
+   ifs.getline(stripePath3BEAMGREEN, 256);
+   ifs.getline(stripePath3BEAMTWO, 256);
+   ifs.getline(stripePath7Phase, 256);
+   ifs.getline(stripePath7PhaseGREEN, 256);
+   ifs.getline(stripePath7PhaseTWO, 256);
    ifs.close();
 
    std::cout << "lutPath: " << lutPath << std::endl;
-   std::wcout << "stripePath: " << stripePath << std::endl;
-   stPath = stripePath;
+   std::wcout << "stripePath3BEAM: " << stripePath3BEAM << std::endl;
+   std::wcout << "stripePath3BEAMGREEN: " << stripePath3BEAMGREEN << std::endl;
+   std::wcout << "stripePath3BEAMTWO: " << stripePath3BEAMTWO << std::endl;
+   std::wcout << "stripePath7Phase: " << stripePath7Phase << std::endl;
+   std::wcout << "stripePath7PhaseGREEN: " << stripePath7PhaseGREEN << std::endl;
+   std::wcout << "stripePath7PhaseTWO: " << stripePath7PhaseTWO << std::endl;
+   stPath = stripePath3BEAM;// Default Path
 }
 
 void meadowlark::load_lut() {
@@ -222,6 +238,7 @@ int meadowlark::slm_thread(void* data)
    //memset(ImageTwo, 0, ImgSize);
 
    keep_alive = true;
+   std::cout << "set keep alive: true" << std::endl;
    while (keep_alive) {
       uiData->_msg_label->set_text("!!!SLM ARMED!!!");
       uiData->_view->refresh();
@@ -261,7 +278,7 @@ int meadowlark::slm_thread(void* data)
       //VortexCharge = 3;
       //Generate_LG(ImageTwo, WFC, width, height, depth, VortexCharge, width / 2.0, height / 2.0, fork, RGB);
 
-
+      //keep_alive = true;
       is_running = true;
       offset = ImgSize;
 
@@ -274,9 +291,12 @@ int meadowlark::slm_thread(void* data)
          //and it is safe to write a new image when ImageWriteComplete returns
 
          //printf("Loading pattern sequence number: %u\n", offset/ImgSize + 1);
+         std::unique_lock lck(crit_buffer);
          int write_value = Write_image(board_number, ((unsigned char*)im_buffer + offset), ImgSize, ExternalTrigger, FlipImmediate, OutputPulseImageFlip, OutputPulseImageRefresh, 5000);
-         int write_complete = ImageWriteComplete(board_number, 5000);
          offset = (offset + ImgSize) % buffer_size;
+         lck.unlock();
+
+         int write_complete = ImageWriteComplete(board_number, 5000);
          if (write_complete < 0) {
             is_running = false;
             std::cout << "Trigger timed out" << std::endl;
@@ -317,3 +337,20 @@ void meadowlark::disable_meadowlark()
       Delete_SDK();
  }
 
+bool meadowlark::reloadImageBuffer() 
+{
+    if (keep_alive) {
+        std::cout << "reloading images: " << stPath << std::endl;
+        std::unique_lock lck(crit_buffer);
+        free(im_buffer);
+        im_buffer = nullptr;
+        offset = 0;
+        load_images();
+        lck.unlock();
+        return true;
+    }
+    else {
+        std::cout << "not reloading images" << std::endl;
+        return false;
+    }
+}

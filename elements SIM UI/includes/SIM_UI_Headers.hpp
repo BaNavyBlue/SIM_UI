@@ -58,6 +58,7 @@
 #define NO_SIM_Z_ONLY (0x2)
 #define SINGLE_ANGLE (0x4)
 #define SEVEN_PHASE (0x8)
+#define SEVEN_FREE (0x10)
 
 #define FREE_RUN (0x0)
 #define Z_MODE (0x1)

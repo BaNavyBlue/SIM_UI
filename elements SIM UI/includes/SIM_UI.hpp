@@ -17,6 +17,13 @@ enum TABS
    STAGE_CONTROL
 };
 
+enum SIM_STATE {
+    THREE_PHASE,
+    FIVE_PHASE_THREE_BEAM,
+    SEVEN_PHASE_THREE_BEAM,
+    NO_SIM
+};
+
 //using namespace cycfi::elements;
 namespace el = cycfi::elements;
 class SIM_UI;
@@ -48,6 +55,8 @@ public:
    bool free_run_state = false;
    bool seven_phase_mode = false;
    std::condition_variable signal_slm;
+   SLM_Interface SLM;
+   int sim_state = FIVE_PHASE_THREE_BEAM;
    //std::mutex sleep_PI;
    //std::condition_variable signal_PI;
 
@@ -75,7 +84,7 @@ private:
    
    std::mutex sleep_slm;
 
-   SLM_Interface SLM;
+
    Stage PIStage;
    Stage THORStage;
    

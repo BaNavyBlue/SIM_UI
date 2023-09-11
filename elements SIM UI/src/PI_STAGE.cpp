@@ -80,7 +80,7 @@ int PI_STAGE::PIStage_Thread(void* data_ptr) {
         //WaitForMotionDone(iD, sAxis.c_str());
         //std::cout << "Successfully executed relative move forward by " << targetPos << " units" << std::endl;
 
-        SetServoState(iD, sAxis.c_str(), SERVO_OFF);
+        //SetServoState(iD, sAxis.c_str(), SERVO_OFF);
         PI_CloseConnection(iD);
         std::cout << "Closing connection." << std::endl;
     }

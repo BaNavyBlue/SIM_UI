@@ -89,7 +89,7 @@ SIM_UI::~SIM_UI()
    }
    if (_SLM_STATUS) {
       SLM.SLM.keep_alive = false;
-      if(!SLM.SLM.is_running) signal_slm.notify_one();
+      /*if (!SLM.SLM.is_running)*/ signal_slm.notify_one();
       std::cout << "Joining Thread" << std::endl;
       SLM.join_slm_thread();
    }
@@ -109,6 +109,8 @@ SIM_UI::~SIM_UI()
 void SIM_UI::stop_slm()
 {
    std::cout << "trying to join thread" << std::endl;
+   SLM.SLM.keep_alive = false;
+   /*if (!SLM.SLM.is_running)*/ signal_slm.notify_one();
    SLM.join_slm_thread();
 }
 
@@ -624,121 +626,209 @@ auto SIM_UI::make_basic_interface()
 
    SIM_button2.select(true);
 
+   auto OverideSIMRadio = [=,butt1 = SIM_button1, butt2 = SIM_button2, butt3 = SIM_button3, butt4 = SIM_button4](auto state)
+   {
+       
+   };
+
    SIM_button1.on_click =
-       [this](bool click_state)
+       [&](bool click_state)
    {
        if (click_state) {
-           this->USB_DATA.SIM_angles = 3;
-           this->USB_DATA.SIM_phases = 3;
-           this->USB_DATA.min_frames = 9;
-           if (this->USB_DATA.triggerStage) {
-               this->USB_DATA.min_frames *= this->USB_DATA.positions;
-           }
-           float lapse_ideal = 1 / this->USB_DATA.fpsVal * this->USB_DATA.min_frames;
-           if (this->USB_DATA.triggerStage && !this->free_run_state) {
-               if (this->USB_DATA.lapseVal < (lapse_ideal + 0.025 * (this->USB_DATA.positions - 1))) { // 0.025 is the stage wait time
-                   this->USB_DATA.lapseVal = lapse_ideal + 0.025 * (this->USB_DATA.positions - 1);
+           //if (!this->SLM.SLM.is_running) {
+               this->USB_DATA.SIM_angles = 3;
+               this->USB_DATA.SIM_phases = 3;
+               this->USB_DATA.min_frames = 9;
+               if (this->USB_DATA.triggerStage) {
+                   this->USB_DATA.min_frames *= this->USB_DATA.positions;
+               }
+               float lapse_ideal = 1 / this->USB_DATA.fpsVal * this->USB_DATA.min_frames;
+               if (this->USB_DATA.triggerStage && !this->free_run_state) {
+                   if (this->USB_DATA.lapseVal < (lapse_ideal + 0.025 * (this->USB_DATA.positions - 1))) { // 0.025 is the stage wait time
+                       this->USB_DATA.lapseVal = lapse_ideal + 0.025 * (this->USB_DATA.positions - 1);
+                       this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
+                   }
+
+               }
+               else if (this->USB_DATA.lapseVal < lapse_ideal) {
+                   this->USB_DATA.lapseVal = lapse_ideal;
                    this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
                }
-               
-           }
-           else if(this->USB_DATA.lapseVal < lapse_ideal){
-               this->USB_DATA.lapseVal = lapse_ideal;
-               this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
-           }
-           this->USB.change_lapse_count();
-           this->USB_DATA.outgoing.mode = 0;
-           this->USB_DATA.outgoing.mode |= TWO_BEAM;
-           this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+               this->USB.change_lapse_count();
+               this->USB_DATA.outgoing.mode = 0;
+               this->USB_DATA.outgoing.mode |= TWO_BEAM;
+               this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+           //}
+           //else {
+           //    switch (this->sim_state) {
+           //        case THREE_PHASE:
+           //            SIM_button1.select(true);
+           //            break;
+           //        case FIVE_PHASE_THREE_BEAM:
+           //            SIM_button2.select(true);
+           //            break;
+           //        case SEVEN_PHASE_THREE_BEAM:
+           //            SIM_button3.select(true);
+           //            break;
+           //        case NO_SIM:
+           //            SIM_button4.select(true);
+           //            break;
+           //    }
+           //}
        }
    };
 
    SIM_button2.on_click =
-       [this](bool click_state)
+       [&](bool click_state)
    {
+       
        if (click_state) {
-           this->USB_DATA.SIM_angles = 3;
-           this->USB_DATA.SIM_phases = 5;
-           this->USB_DATA.min_frames = 15;
-           if (this->USB_DATA.triggerStage) {
-               this->USB_DATA.min_frames *= this->USB_DATA.positions;
-           }
-           float lapse_ideal = 1 / this->USB_DATA.fpsVal * this->USB_DATA.min_frames;
-           if (this->USB_DATA.triggerStage && !this->free_run_state) {
-               if (this->USB_DATA.lapseVal < (lapse_ideal + 0.025 * (this->USB_DATA.positions - 1))) { // 0.025 is the stage wait time
-                   this->USB_DATA.lapseVal = lapse_ideal + 0.025 * (this->USB_DATA.positions - 1);
+           //if (!this->SLM.SLM.is_running) {
+               this->SLM.SLM.stPath = this->SLM.SLM.stripePath3BEAM;
+               this->SLM.SLM.reloadImageBuffer();
+               this->USB_DATA.SIM_angles = 3;
+               this->USB_DATA.SIM_phases = 5;
+               this->USB_DATA.min_frames = 15;
+               if (this->USB_DATA.triggerStage) {
+                   this->USB_DATA.min_frames *= this->USB_DATA.positions;
+               }
+               float lapse_ideal = 1 / this->USB_DATA.fpsVal * this->USB_DATA.min_frames;
+               if (this->USB_DATA.triggerStage && !this->free_run_state) {
+                   if (this->USB_DATA.lapseVal < (lapse_ideal + 0.025 * (this->USB_DATA.positions - 1))) { // 0.025 is the stage wait time
+                       this->USB_DATA.lapseVal = lapse_ideal + 0.025 * (this->USB_DATA.positions - 1);
+                       this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
+                   }
+
+               }
+               else if (this->USB_DATA.lapseVal < lapse_ideal) {
+                   this->USB_DATA.lapseVal = lapse_ideal;
                    this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
                }
-
-           }
-           else if (this->USB_DATA.lapseVal < lapse_ideal) {
-               this->USB_DATA.lapseVal = lapse_ideal;
-               this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
-           }
-           this->USB.change_lapse_count();
-           this->USB_DATA.outgoing.mode = 0;
-           this->USB_DATA.outgoing.mode |= THREE_BEAM;
-           this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+               this->USB.change_lapse_count();
+               this->USB_DATA.outgoing.mode = 0;
+               this->USB_DATA.outgoing.mode |= THREE_BEAM;
+               this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+           //}
+           //else {
+           //    switch (this->sim_state) {
+           //        case THREE_PHASE:
+           //            SIM_button1.select(true);
+           //            break;
+           //        case FIVE_PHASE_THREE_BEAM:
+           //            SIM_button2.select(true);
+           //            break;
+           //        case SEVEN_PHASE_THREE_BEAM:
+           //            SIM_button3.select(true);
+           //            break;
+           //        case NO_SIM:
+           //            SIM_button4.select(true);
+           //            break;
+           //    }
+           //}
        }
    };
 
    SIM_button3.on_click =
-       [this](bool click_state)
+       [&](bool click_state)
    {
        if (click_state) {
+           //if (!this->SLM.SLM.is_running) {
+               this->SLM.SLM.stPath = this->SLM.SLM.stripePath7Phase;
+               this->SLM.SLM.reloadImageBuffer();
+               this->USB_DATA.SIM_angles = 3;
+               this->USB_DATA.SIM_phases = 7;
+               this->USB_DATA.min_frames = 21;
+               if (this->USB_DATA.triggerStage) {
+                   this->USB_DATA.min_frames *= this->USB_DATA.positions;
+               }
+               float lapse_ideal = 1 / this->USB_DATA.fpsVal * this->USB_DATA.min_frames;
+               if (this->USB_DATA.triggerStage && !this->free_run_state) {
+                   if (this->USB_DATA.lapseVal < (lapse_ideal + 0.025 * (this->USB_DATA.positions - 1))) { // 0.025 is the stage wait time
+                       this->USB_DATA.lapseVal = lapse_ideal + 0.025 * (this->USB_DATA.positions - 1);
+                       this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
+                   }
 
-           this->USB_DATA.SIM_angles = 3;
-           this->USB_DATA.SIM_phases = 7;
-           this->USB_DATA.min_frames = 21;
-           if (this->USB_DATA.triggerStage) {
-               this->USB_DATA.min_frames *= this->USB_DATA.positions;
-           }
-           float lapse_ideal = 1 / this->USB_DATA.fpsVal * this->USB_DATA.min_frames;
-           if (this->USB_DATA.triggerStage && !this->free_run_state) {
-               if (this->USB_DATA.lapseVal < (lapse_ideal + 0.025 * (this->USB_DATA.positions - 1))) { // 0.025 is the stage wait time
-                   this->USB_DATA.lapseVal = lapse_ideal + 0.025 * (this->USB_DATA.positions - 1);
+               }
+               else if (this->USB_DATA.lapseVal < lapse_ideal) {
+                   this->USB_DATA.lapseVal = lapse_ideal;
                    this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
                }
+               this->USB_DATA.outgoing.mode = 0;
+               if (this->free_run_state) {
+                   this->USB_DATA.outgoing.mode |= SEVEN_FREE;
+               }
+               else {
+                   this->USB_DATA.outgoing.mode |= SEVEN_PHASE;
+               }
 
-           }
-           else if (this->USB_DATA.lapseVal < lapse_ideal) {
-               this->USB_DATA.lapseVal = lapse_ideal;
-               this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
-           }
-           this->USB.change_lapse_count();
-           this->USB_DATA.outgoing.mode = 0;
-           this->USB_DATA.outgoing.mode |= SEVEN_PHASE;
-           this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+               this->USB.change_lapse_count();
+               this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+           //}
+           /*else {
+               switch (this->sim_state) {
+                   case THREE_PHASE:
+                       SIM_button1.select(true);
+                       break;
+                   case FIVE_PHASE_THREE_BEAM:
+                       SIM_button2.select(true);
+                       break;
+                   case SEVEN_PHASE_THREE_BEAM:
+                       SIM_button3.select(true);
+                       break;
+                   case NO_SIM:
+                       SIM_button4.select(true);
+                       break;
+               }
+           }*/
        }
        this->seven_phase_mode = click_state;
    };
 
    SIM_button4.on_click =
-       [this](bool click_state)
+       [&](bool click_state)
    {
        if (click_state) {
-           this->USB_DATA.SIM_angles = 1;
-           this->USB_DATA.SIM_phases = 1;
-           this->USB_DATA.min_frames = 1;
-           if (this->USB_DATA.triggerStage) {
-               this->USB_DATA.min_frames *= this->USB_DATA.positions;
-           }
-           float lapse_ideal = 1 / this->USB_DATA.fpsVal * this->USB_DATA.min_frames;
-           if (this->USB_DATA.triggerStage && !this->free_run_state) {
-               if (this->USB_DATA.lapseVal < (lapse_ideal + 0.025 * (this->USB_DATA.positions - 1))) { // 0.025 is the stage wait time
-                   this->USB_DATA.lapseVal = lapse_ideal + 0.025 * (this->USB_DATA.positions - 1);
+           //if (!this->SLM.SLM.is_running) {
+               this->USB_DATA.SIM_angles = 1;
+               this->USB_DATA.SIM_phases = 1;
+               this->USB_DATA.min_frames = 1;
+               if (this->USB_DATA.triggerStage) {
+                   this->USB_DATA.min_frames *= this->USB_DATA.positions;
+               }
+               float lapse_ideal = 1 / this->USB_DATA.fpsVal * this->USB_DATA.min_frames;
+               if (this->USB_DATA.triggerStage && !this->free_run_state) {
+                   if (this->USB_DATA.lapseVal < (lapse_ideal + 0.025 * (this->USB_DATA.positions - 1))) { // 0.025 is the stage wait time
+                       this->USB_DATA.lapseVal = lapse_ideal + 0.025 * (this->USB_DATA.positions - 1);
+                       this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
+                   }
+
+               }
+               else if (this->USB_DATA.lapseVal < lapse_ideal) {
+                   this->USB_DATA.lapseVal = lapse_ideal;
                    this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
                }
-
-           }
-           else if (this->USB_DATA.lapseVal < lapse_ideal) {
-               this->USB_DATA.lapseVal = lapse_ideal;
-               this->USB_DATA.lapse_period.second.get()->set_text(std::to_string(this->USB_DATA.lapseVal));
-           }
-           this->USB.change_lapse_count();
-           this->USB_DATA.outgoing.mode = 0;
-           this->USB_DATA.outgoing.mode |= NO_SIM_Z_ONLY;
-           this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+               this->USB.change_lapse_count();
+               this->USB_DATA.outgoing.mode = 0;
+               this->USB_DATA.outgoing.mode |= NO_SIM_Z_ONLY;
+               this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+           //}
+           //else {
+           //    switch (this->sim_state) {
+           //        case THREE_PHASE:
+           //            SIM_button1.select(true);
+           //            break;
+           //        case FIVE_PHASE_THREE_BEAM:
+           //            SIM_button2.select(true);
+           //            break;
+           //        case SEVEN_PHASE_THREE_BEAM:
+           //            SIM_button3.select(true);
+           //            break;
+           //        case NO_SIM:
+           //            SIM_button4.select(true);
+           //            break;
+           //
+           //    }
+           //}
        }
    };
 
@@ -774,10 +864,22 @@ auto SIM_UI::make_basic_interface()
            this->USB_DATA.outgoing.mode = 0;
            this->USB_DATA.outgoing.mode |= FREE_RUN;
            this->USB_DATA.outgoing.flags |= SET_RUN_MODE;
+           if (this->seven_phase_mode) {
+               Sleep(100);
+               this->USB_DATA.outgoing.mode = 0;
+               this->USB_DATA.outgoing.mode |= SEVEN_FREE;
+               this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+           }
            this->USB_DATA.count_run_state = false;
            this->free_run_state = true;
        }
        else {
+           if (this->seven_phase_mode) {
+               this->USB_DATA.outgoing.mode = 0;
+               this->USB_DATA.outgoing.mode |= SEVEN_PHASE;
+               this->USB_DATA.outgoing.flags |= SET_SIM_MODE;
+               this->free_run_state = false;
+           } else
            if (this->USB_DATA.triggerStage) {
                this->USB_DATA.outgoing.mode = 0;
                this->USB_DATA.outgoing.mode |= Z_MODE;
