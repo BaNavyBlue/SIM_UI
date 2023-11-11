@@ -1,3 +1,10 @@
+// Copyright 2021 Antone Bajor
+/*
+     This code was developed based on the cycfi::elements example code
+     https://github.com/cycfi/elements
+     This is the Main File of the project and defines all of the button configuration and callbacks.
+*/
+
 #include <SIM_UI.hpp>
 #include <SLM.hpp>
 #include "Stage_Control.h"
