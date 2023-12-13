@@ -2,6 +2,7 @@
 The user interface and control code for the SARA LAB MF-SIM system.
 
 <img src="https://github.com/SaraLab-Group/SIM_UI/blob/main/elements%20SIM%20UI/SIM_UI.png" alt="SIM_UI Main Panel" width="500"/>
+<img src="https://github.com/SaraLab-Group/SIM_UI/blob/main/elements%20SIM%20UI/SIM_UI_Stage.png" alt="SIM_UI Stage Panel" width="500"/>
 
 The UI is build using the cycfi Elements library.
 https://github.com/cycfi/elements
